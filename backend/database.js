@@ -1,15 +1,97 @@
-const Database = require('better-sqlite3');
 const path = require('path');
+const fs = require('fs');
 
-const dbPath = path.join(__dirname, '..', 'standleo.db');
-console.log('Database path:', dbPath);
-const db = new Database(dbPath);
+const DB_PATH = path.join(__dirname, '..', 'standleo.db');
+let db = null;
+let initPromise = null;
 
-db.pragma('journal_mode = WAL');
-db.pragma('foreign_keys = ON');
+async function initSqlJs() {
+  const SQL = await require('sql.js')();
+  return SQL;
+}
 
-function initialize() {
-  db.exec(`
+async function getDb() {
+  if (db) return db;
+  
+  if (!initPromise) {
+    initPromise = initSqlJs();
+  }
+  
+  const SQL = await initPromise;
+  
+  try {
+    if (fs.existsSync(DB_PATH)) {
+      const buffer = fs.readFileSync(DB_PATH);
+      db = new SQL.Database(buffer);
+    } else {
+      db = new SQL.Database();
+    }
+  } catch (e) {
+    db = new SQL.Database();
+  }
+  
+  db.run('PRAGMA foreign_keys = ON');
+  return db;
+}
+
+async function saveDb() {
+  if (!db) return;
+  try {
+    const data = db.export();
+    const buffer = Buffer.from(data);
+    fs.writeFileSync(DB_PATH, buffer);
+  } catch (e) {
+    console.error('Error saving DB:', e.message);
+  }
+}
+
+async function q(sql, params = []) {
+  const d = await getDb();
+  const stmt = d.prepare(sql);
+  if (params.length > 0) stmt.bind(params);
+  return stmt;
+}
+
+async function run(sql, params = []) {
+  const d = await getDb();
+  d.run(sql, params);
+  await saveDb();
+  const result = d.exec("SELECT last_insert_rowid() as id");
+  return { lastInsertRowid: result[0]?.values[0][0] };
+}
+
+async function get(sql, params = []) {
+  const stmt = await q(sql, params);
+  if (stmt.step()) {
+    const cols = stmt.getColumnNames();
+    const vals = stmt.get();
+    stmt.free();
+    const row = {};
+    cols.forEach((c, i) => { row[c] = vals[i]; });
+    return row;
+  }
+  stmt.free();
+  return null;
+}
+
+async function all(sql, params = []) {
+  const stmt = await q(sql, params);
+  const rows = [];
+  const cols = stmt.getColumnNames();
+  while (stmt.step()) {
+    const vals = stmt.get();
+    const row = {};
+    cols.forEach((c, i) => { row[c] = vals[i]; });
+    rows.push(row);
+  }
+  stmt.free();
+  return rows;
+}
+
+// Chat-style simple schema that syncs on every write
+async function initialize() {
+  await getDb();
+  db.run(`
     CREATE TABLE IF NOT EXISTS users (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       game_id TEXT UNIQUE NOT NULL,
@@ -20,8 +102,9 @@ function initialize() {
       matches_played INTEGER DEFAULT 0,
       is_admin INTEGER DEFAULT 0,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-    );
-
+    )
+  `);
+  db.run(`
     CREATE TABLE IF NOT EXISTS matches (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       lobby_id INTEGER NOT NULL,
@@ -37,8 +120,9 @@ function initialize() {
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       completed_at DATETIME,
       screenshot_path TEXT
-    );
-
+    )
+  `);
+  db.run(`
     CREATE TABLE IF NOT EXISTS match_results (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       match_id INTEGER NOT NULL,
@@ -50,8 +134,9 @@ function initialize() {
       elo_changes_applied INTEGER DEFAULT 0,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (match_id) REFERENCES matches(id)
-    );
-
+    )
+  `);
+  db.run(`
     CREATE TABLE IF NOT EXISTS lobbies (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       lobby_number INTEGER NOT NULL,
@@ -62,8 +147,9 @@ function initialize() {
       player3_id INTEGER,
       player4_id INTEGER,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-    );
-
+    )
+  `);
+  db.run(`
     CREATE TABLE IF NOT EXISTS ban_history (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       user_id INTEGER NOT NULL,
@@ -71,62 +157,65 @@ function initialize() {
       banned_by INTEGER,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (user_id) REFERENCES users(id)
-    );
+    )
   `);
+  await saveDb();
 }
 
-function getUserByGameId(gameId) {
-  return db.prepare('SELECT * FROM users WHERE game_id = ?').get(gameId);
+// ========== USER FUNCTIONS ==========
+
+async function getUserByGameId(gameId) {
+  return await get('SELECT * FROM users WHERE game_id = ?', [gameId]);
 }
 
-function getUserById(id) {
-  return db.prepare('SELECT * FROM users WHERE id = ?').get(id);
+async function getUserById(id) {
+  return await get('SELECT * FROM users WHERE id = ?', [id]);
 }
 
-function createUser(gameId, nickname) {
-  const existing = getUserByGameId(gameId);
+async function createUser(gameId, nickname) {
+  const existing = await getUserByGameId(gameId);
   if (existing) {
-    db.prepare('UPDATE users SET nickname = ? WHERE game_id = ?').run(nickname, gameId);
+    await run('UPDATE users SET nickname = ? WHERE game_id = ?', [nickname, gameId]);
     return existing;
   }
-  const stmt = db.prepare('INSERT INTO users (game_id, nickname) VALUES (?, ?)');
-  const result = stmt.run(gameId, nickname);
+  const result = await run('INSERT INTO users (game_id, nickname) VALUES (?, ?)', [gameId, nickname]);
   return { id: result.lastInsertRowid, game_id: gameId, nickname, elo: 1000, wins: 0, losses: 0, matches_played: 0, is_admin: 0 };
 }
 
-function updateElo(userId, eloChange) {
-  const user = getUserById(userId);
+async function updateElo(userId, eloChange) {
+  const user = await getUserById(userId);
   if (!user) return null;
   const newElo = Math.max(100, user.elo + eloChange);
-  db.prepare('UPDATE users SET elo = ? WHERE id = ?').run(newElo, userId);
+  await run('UPDATE users SET elo = ? WHERE id = ?', [newElo, userId]);
   return newElo;
 }
 
-function recordMatchResult(userId, won) {
-  const user = getUserById(userId);
+async function recordMatchResult(userId, won) {
+  const user = await getUserById(userId);
   if (!user) return;
   if (won) {
-    db.prepare('UPDATE users SET wins = wins + 1, matches_played = matches_played + 1 WHERE id = ?').run(userId);
+    await run('UPDATE users SET wins = wins + 1, matches_played = matches_played + 1 WHERE id = ?', [userId]);
   } else {
-    db.prepare('UPDATE users SET losses = losses + 1, matches_played = matches_played + 1 WHERE id = ?').run(userId);
+    await run('UPDATE users SET losses = losses + 1, matches_played = matches_played + 1 WHERE id = ?', [userId]);
   }
 }
 
-function createLobby(lobbyNumber) {
-  const stmt = db.prepare('INSERT INTO lobbies (lobby_number, status) VALUES (?, ?)');
-  const result = stmt.run(lobbyNumber, 'waiting');
+// ========== LOBBY FUNCTIONS ==========
+
+async function createLobby(lobbyNumber) {
+  const result = await run('INSERT INTO lobbies (lobby_number, status) VALUES (?, ?)', [lobbyNumber, 'waiting']);
   return { id: result.lastInsertRowid, lobby_number: lobbyNumber, status: 'waiting', mode: '2v2', players: [] };
 }
 
-function getLobby(id) {
-  return db.prepare('SELECT * FROM lobbies WHERE id = ?').get(id);
+async function getLobby(id) {
+  return await get('SELECT * FROM lobbies WHERE id = ?', [id]);
 }
 
-function getLobbies() {
-  return db.prepare('SELECT * FROM lobbies ORDER BY lobby_number ASC').all();
+async function getLobbies() {
+  return await all('SELECT * FROM lobbies ORDER BY lobby_number ASC');
 }
 
-function updateLobby(id, data) {
+async function updateLobby(id, data) {
   const fields = [];
   const values = [];
   for (const [key, value] of Object.entries(data)) {
@@ -137,60 +226,67 @@ function updateLobby(id, data) {
   }
   if (fields.length > 0) {
     values.push(id);
-    db.prepare(`UPDATE lobbies SET ${fields.join(', ')} WHERE id = ?`).run(...values);
+    await run(`UPDATE lobbies SET ${fields.join(', ')} WHERE id = ?`, values);
   }
 }
 
-function joinLobby(lobbyId, userId) {
-  const lobby = getLobby(lobbyId);
+async function joinLobby(lobbyId, userId) {
+  const lobby = await getLobby(lobbyId);
   if (!lobby) return null;
-  
-  if (lobby.player1_id === userId || lobby.player2_id === userId || 
-      lobby.player3_id === userId || lobby.player4_id === userId) {
+
+  if (lobby.player1_id === userId || lobby.player2_id === userId ||
+    lobby.player3_id === userId || lobby.player4_id === userId) {
     return lobby;
   }
 
   if (!lobby.player1_id) {
-    db.prepare('UPDATE lobbies SET player1_id = ?, status = CASE WHEN ? IS NOT NULL AND ? IS NOT NULL AND ? IS NOT NULL AND ? IS NOT NULL THEN \'full\' ELSE \'waiting\' END WHERE id = ?').run(userId, lobby.player1_id, lobby.player2_id, lobby.player3_id, lobby.player4_id, lobbyId);
+    await run('UPDATE lobbies SET player1_id = ? WHERE id = ?', [userId, lobbyId]);
   } else if (!lobby.player2_id) {
-    db.prepare('UPDATE lobbies SET player2_id = ?, status = CASE WHEN ? IS NOT NULL AND ? IS NOT NULL AND ? IS NOT NULL AND ? IS NOT NULL THEN \'full\' ELSE \'waiting\' END WHERE id = ?').run(userId, lobby.player1_id, lobby.player2_id, lobby.player3_id, lobby.player4_id, lobbyId);
+    await run('UPDATE lobbies SET player2_id = ? WHERE id = ?', [userId, lobbyId]);
   } else if (!lobby.player3_id) {
-    db.prepare('UPDATE lobbies SET player3_id = ?, status = CASE WHEN ? IS NOT NULL AND ? IS NOT NULL AND ? IS NOT NULL AND ? IS NOT NULL THEN \'full\' ELSE \'waiting\' END WHERE id = ?').run(userId, lobby.player1_id, lobby.player2_id, lobby.player3_id, lobby.player4_id, lobbyId);
+    await run('UPDATE lobbies SET player3_id = ? WHERE id = ?', [userId, lobbyId]);
   } else if (!lobby.player4_id) {
-    db.prepare('UPDATE lobbies SET player4_id = ?, status = CASE WHEN ? IS NOT NULL AND ? IS NOT NULL AND ? IS NOT NULL AND ? IS NOT NULL THEN \'full\' ELSE \'waiting\' END WHERE id = ?').run(userId, lobby.player1_id, lobby.player2_id, lobby.player3_id, lobby.player4_id, lobbyId);
+    await run('UPDATE lobbies SET player4_id = ? WHERE id = ?', [userId, lobbyId]);
   }
-  
-  return getLobby(lobbyId);
+
+  const updated = await getLobby(lobbyId);
+  const players = [updated.player1_id, updated.player2_id, updated.player3_id, updated.player4_id].filter(Boolean);
+  const newStatus = players.length >= 4 ? 'full' : 'waiting';
+  await run('UPDATE lobbies SET status = ? WHERE id = ?', [newStatus, lobbyId]);
+
+  return await getLobby(lobbyId);
 }
 
-function leaveLobby(lobbyId, userId) {
-  const lobby = getLobby(lobbyId);
+async function leaveLobby(lobbyId, userId) {
+  const lobby = await getLobby(lobbyId);
   if (!lobby) return;
-  
-  if (lobby.player1_id == userId) db.prepare('UPDATE lobbies SET player1_id = NULL WHERE id = ?').run(lobbyId);
-  else if (lobby.player2_id == userId) db.prepare('UPDATE lobbies SET player2_id = NULL WHERE id = ?').run(lobbyId);
-  else if (lobby.player3_id == userId) db.prepare('UPDATE lobbies SET player3_id = NULL WHERE id = ?').run(lobbyId);
-  else if (lobby.player4_id == userId) db.prepare('UPDATE lobbies SET player4_id = NULL WHERE id = ?').run(lobbyId);
-  
-  db.prepare('UPDATE lobbies SET status = \'waiting\' WHERE id = ?').run(lobbyId);
+
+  if (lobby.player1_id == userId) await run('UPDATE lobbies SET player1_id = NULL WHERE id = ?', [lobbyId]);
+  else if (lobby.player2_id == userId) await run('UPDATE lobbies SET player2_id = NULL WHERE id = ?', [lobbyId]);
+  else if (lobby.player3_id == userId) await run('UPDATE lobbies SET player3_id = NULL WHERE id = ?', [lobbyId]);
+  else if (lobby.player4_id == userId) await run('UPDATE lobbies SET player4_id = NULL WHERE id = ?', [lobbyId]);
+
+  await run("UPDATE lobbies SET status = 'waiting' WHERE id = ?", [lobbyId]);
 }
 
-function createMatch(lobbyId, captainTId, captainCTId) {
-  const lobby = getLobby(lobbyId);
+// ========== MATCH FUNCTIONS ==========
+
+async function createMatch(lobbyId, captainTId, captainCTId) {
+  const lobby = await getLobby(lobbyId);
   if (!lobby) return null;
-  
-  const stmt = db.prepare(`INSERT INTO matches (lobby_id, captain_t_id, captain_ct_id, team_t_player1_id, team_t_player2_id, team_ct_player1_id, team_ct_player2_id, status)
-    VALUES (?, ?, ?, ?, ?, ?, ?, 'pick_maps')`);
-  
-  // Determine teams - captains pick in the frontend
-  const result = stmt.run(lobbyId, captainTId, captainCTId, captainTId, null, captainCTId, null);
-  
-  db.prepare('UPDATE lobbies SET status = \'in_match\' WHERE id = ?').run(lobbyId);
-  
+
+  const result = await run(
+    `INSERT INTO matches (lobby_id, captain_t_id, captain_ct_id, team_t_player1_id, team_t_player2_id, team_ct_player1_id, team_ct_player2_id, status)
+     VALUES (?, ?, ?, ?, ?, ?, ?, 'pick_maps')`,
+    [lobbyId, captainTId, captainCTId, captainTId, null, captainCTId, null]
+  );
+
+  await run("UPDATE lobbies SET status = 'in_match' WHERE id = ?", [lobbyId]);
+
   return { id: result.lastInsertRowid, lobby_id: lobbyId, captain_t_id: captainTId, captain_ct_id: captainCTId };
 }
 
-function updateMatch(matchId, data) {
+async function updateMatch(matchId, data) {
   const fields = [];
   const values = [];
   for (const [key, value] of Object.entries(data)) {
@@ -201,25 +297,30 @@ function updateMatch(matchId, data) {
   }
   if (fields.length > 0) {
     values.push(matchId);
-    db.prepare(`UPDATE matches SET ${fields.join(', ')} WHERE id = ?`).run(...values);
+    await run(`UPDATE matches SET ${fields.join(', ')} WHERE id = ?`, values);
   }
 }
 
-function getMatch(id) {
-  return db.prepare('SELECT * FROM matches WHERE id = ?').get(id);
+async function getMatch(id) {
+  return await get('SELECT * FROM matches WHERE id = ?', [id]);
 }
 
-function getLeaderboard(limit = 50) {
-  return db.prepare('SELECT id, game_id, nickname, elo, wins, losses, matches_played FROM users WHERE matches_played > 0 ORDER BY elo DESC LIMIT ?').all(limit);
+async function getLeaderboard(limit = 50) {
+  return await all(
+    'SELECT id, game_id, nickname, elo, wins, losses, matches_played FROM users WHERE matches_played > 0 ORDER BY elo DESC LIMIT ?',
+    [limit]
+  );
 }
 
-function addMatchResult(matchId, winner, screenshotPath, submittedBy) {
-  const stmt = db.prepare('INSERT INTO match_results (match_id, winner, screenshot_path, submitted_by) VALUES (?, ?, ?, ?)');
-  return stmt.run(matchId, winner, screenshotPath, submittedBy);
+async function addMatchResult(matchId, winner, screenshotPath, submittedBy) {
+  return await run(
+    'INSERT INTO match_results (match_id, winner, screenshot_path, submitted_by) VALUES (?, ?, ?, ?)',
+    [matchId, winner, screenshotPath, submittedBy]
+  );
 }
 
-function getPendingResults() {
-  return db.prepare(`
+async function getPendingResults() {
+  return await all(`
     SELECT mr.*, m.lobby_id, m.captain_t_id, m.captain_ct_id,
       ct.game_id as ct_game_id, ct.nickname as ct_nickname,
       t.game_id as t_game_id, t.nickname as t_nickname
@@ -229,25 +330,25 @@ function getPendingResults() {
     LEFT JOIN users t ON m.captain_t_id = t.id
     WHERE mr.confirmed_by_admin = 0
     ORDER BY mr.created_at DESC
-  `).all();
+  `);
 }
 
-function confirmResult(resultId, adminId) {
-  const result = db.prepare('SELECT * FROM match_results WHERE id = ?').get(resultId);
+async function confirmResult(resultId, adminId) {
+  const result = await get('SELECT * FROM match_results WHERE id = ?', [resultId]);
   if (!result) return null;
-  
-  db.prepare('UPDATE match_results SET confirmed_by_admin = 1, is_confirmed = 1 WHERE id = ?').run(resultId);
-  db.prepare('UPDATE matches SET status = \'completed\', completed_at = CURRENT_TIMESTAMP WHERE id = ?').run(result.match_id);
-  
+
+  await run('UPDATE match_results SET confirmed_by_admin = 1, is_confirmed = 1 WHERE id = ?', [resultId]);
+  await run("UPDATE matches SET status = 'completed', completed_at = CURRENT_TIMESTAMP WHERE id = ?", [result.match_id]);
+
   return result;
 }
 
-function makeAdmin(userId) {
-  db.prepare('UPDATE users SET is_admin = 1 WHERE id = ?').run(userId);
+async function makeAdmin(userId) {
+  await run('UPDATE users SET is_admin = 1 WHERE id = ?', [userId]);
 }
 
-function isAdmin(userId) {
-  const user = getUserById(userId);
+async function isAdmin(userId) {
+  const user = await getUserById(userId);
   return user && user.is_admin === 1;
 }
 
