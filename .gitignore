@@ -1,0 +1,7 @@
+node_modules/
+standleo.db
+standleo.db-shm
+standleo.db-wal
+uploads/*
+!uploads/.gitkeep
+.env

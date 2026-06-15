@@ -1,0 +1,1736 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>StandLeo</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #0f0f23;
+      color: #fff;
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+    #app {
+      width: 100%;
+      max-width: 420px;
+      min-height: 100vh;
+      background: linear-gradient(180deg, #1a1a3e 0%, #0f0f23 100%);
+      position: relative;
+      overflow: hidden;
+      box-shadow: 0 0 40px rgba(100, 100, 255, 0.1);
+    }
+
+    /* Pages */
+    .page { display: none; padding: 20px; padding-bottom: 80px; min-height: 100vh; }
+    .page.active { display: block; }
+    .page-inner { animation: fadeIn .3s ease; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+    /* Login Page */
+    #loginPage {
+      display: flex; flex-direction: column; justify-content: center;
+      background: linear-gradient(135deg, #1a1a3e 0%, #0a0a1a 100%);
+    }
+    .login-logo { text-align: center; margin-bottom: 40px; }
+    .login-logo h1 {
+      font-size: 42px; font-weight: 900;
+      background: linear-gradient(135deg, #ff6b35, #f7c948);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      letter-spacing: -1px;
+    }
+    .login-logo p { color: #8888aa; font-size: 14px; margin-top: 8px; }
+    .login-logo .subtitle { color: #f7c948; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 3px; margin-top: 4px; }
+
+    .input-group { margin-bottom: 16px; }
+    .input-group label { display: block; font-size: 12px; color: #8888aa; margin-bottom: 6px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; }
+    .input-group input {
+      width: 100%; padding: 14px 16px; background: rgba(255,255,255,0.06);
+      border: 2px solid rgba(255,255,255,0.08); border-radius: 12px;
+      color: #fff; font-size: 16px; outline: none; transition: .2s;
+    }
+    .input-group input:focus { border-color: #ff6b35; background: rgba(255,107,53,0.05); }
+    .input-group .hint { font-size: 11px; color: #666; margin-top: 4px; }
+
+    .btn {
+      width: 100%; padding: 14px; border: none; border-radius: 12px;
+      font-size: 16px; font-weight: 700; cursor: pointer; transition: .2s;
+      text-transform: uppercase; letter-spacing: 1px;
+    }
+    .btn-primary { background: linear-gradient(135deg, #ff6b35, #f7c948); color: #0f0f23; }
+    .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(255,107,53,0.3); }
+    .btn-primary:disabled { opacity: 0.5; transform: none; box-shadow: none; cursor: not-allowed; }
+    .btn-secondary { background: rgba(255,255,255,0.08); color: #fff; }
+    .btn-secondary:hover { background: rgba(255,255,255,0.12); }
+    .btn-danger { background: linear-gradient(135deg, #ff4444, #cc3333); color: #fff; }
+    .btn-success { background: linear-gradient(135deg, #44cc88, #22aa66); color: #fff; }
+    .btn-small { padding: 8px 16px; font-size: 12px; border-radius: 8px; width: auto; }
+
+    /* Bottom Nav */
+    .bottom-nav {
+      position: fixed; bottom: 0; left: 50%; transform: translateX(-50%);
+      width: 100%; max-width: 420px; background: rgba(26,26,62,0.95);
+      backdrop-filter: blur(20px); border-top: 1px solid rgba(255,255,255,0.06);
+      display: flex; padding: 8px 0; padding-bottom: max(8px, env(safe-area-inset-bottom));
+      z-index: 100;
+    }
+    .nav-item { flex: 1; text-align: center; padding: 6px; cursor: pointer; transition: .2s; }
+    .nav-item .nav-icon { font-size: 22px; }
+    .nav-item .nav-label { font-size: 10px; color: #666; margin-top: 2px; font-weight: 600; }
+    .nav-item.active .nav-label { color: #ff6b35; }
+    .nav-item:hover .nav-label { color: #ff6b35; }
+
+    /* Header */
+    .header {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 16px 0; margin-bottom: 16px;
+    }
+    .header h2 { font-size: 20px; font-weight: 800; }
+    .header .badge {
+      background: rgba(255,107,53,0.2); color: #ff6b35; padding: 4px 12px;
+      border-radius: 20px; font-size: 12px; font-weight: 700;
+    }
+
+    /* Cards */
+    .card {
+      background: rgba(255,255,255,0.04); border-radius: 16px;
+      padding: 16px; margin-bottom: 12px;
+      border: 1px solid rgba(255,255,255,0.06);
+      transition: .2s;
+    }
+    .card:hover { background: rgba(255,255,255,0.06); }
+    .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+    .card-title { font-weight: 700; font-size: 16px; }
+    .card-subtitle { color: #8888aa; font-size: 13px; }
+
+    /* Lobby Cards */
+    .lobby-card {
+      display: flex; justify-content: space-between; align-items: center;
+      background: rgba(255,255,255,0.04); border-radius: 14px;
+      padding: 14px 16px; margin-bottom: 10px;
+      border: 1px solid rgba(255,255,255,0.06); cursor: pointer;
+      transition: .2s;
+    }
+    .lobby-card:hover { background: rgba(255,255,255,0.08); border-color: rgba(255,107,53,0.3); }
+    .lobby-card .lobby-num {
+      width: 40px; height: 40px; border-radius: 10px;
+      background: rgba(255,107,53,0.15); color: #ff6b35;
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 800; font-size: 16px;
+    }
+    .lobby-card .lobby-info { flex: 1; margin-left: 12px; }
+    .lobby-card .lobby-name { font-weight: 700; font-size: 14px; }
+    .lobby-card .lobby-players { color: #8888aa; font-size: 12px; margin-top: 2px; }
+    .lobby-card .lobby-players span { color: #ff6b35; font-weight: 700; }
+    .lobby-card .join-btn {
+      background: linear-gradient(135deg, #ff6b35, #f7c948);
+      color: #0f0f23; border: none; padding: 8px 16px; border-radius: 8px;
+      font-weight: 700; font-size: 12px; cursor: pointer; transition: .2s;
+    }
+    .lobby-card .join-btn:hover { transform: scale(1.05); }
+    .lobby-card .join-btn:disabled { opacity: 0.5; }
+    .lobby-card .status-full { color: #ff4444; font-size: 12px; font-weight: 600; }
+
+    /* Player avatars */
+    .player-avatar {
+      width: 36px; height: 36px; border-radius: 50%;
+      background: linear-gradient(135deg, #ff6b35, #f7c948);
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 800; font-size: 14px; color: #0f0f23;
+    }
+    .player-avatar.small { width: 28px; height: 28px; font-size: 11px; }
+
+    /* Mode Selection */
+    .mode-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 20px; }
+    .mode-card {
+      background: rgba(255,255,255,0.04); border-radius: 16px;
+      padding: 24px 16px; text-align: center; cursor: pointer;
+      border: 2px solid rgba(255,255,255,0.06); transition: .2s;
+    }
+    .mode-card:hover, .mode-card.selected { border-color: #ff6b35; background: rgba(255,107,53,0.08); }
+    .mode-card .mode-icon { font-size: 32px; margin-bottom: 8px; }
+    .mode-card .mode-name { font-weight: 700; font-size: 14px; }
+    .mode-card .mode-desc { color: #8888aa; font-size: 11px; margin-top: 4px; }
+
+    /* Confirm Match */
+    .confirm-container { text-align: center; padding: 20px 0; }
+    .confirm-players { display: flex; justify-content: center; gap: 16px; margin: 20px 0; }
+    .confirm-player {
+      text-align: center; transition: .3s;
+    }
+    .confirm-player .cp-avatar {
+      width: 56px; height: 56px; border-radius: 50%;
+      background: rgba(255,255,255,0.08); display: flex; align-items: center;
+      justify-content: center; font-size: 22px; font-weight: 800;
+      margin: 0 auto 6px; border: 2px solid transparent; transition: .3s;
+    }
+    .confirm-player .cp-name { font-size: 12px; font-weight: 600; color: #8888aa; }
+    .confirm-player.confirmed .cp-avatar { border-color: #44cc88; background: rgba(68,204,136,0.15); }
+    .confirm-player.confirmed .cp-name { color: #44cc88; }
+    .confirm-player .checkmark { position: absolute; margin-top: -10px; margin-left: 35px; color: #44cc88; font-size: 18px; display: none; }
+    .confirm-player.confirmed .checkmark { display: block; }
+
+    .confirm-progress { margin: 16px 0; }
+    .progress-bar {
+      width: 100%; height: 6px; background: rgba(255,255,255,0.06);
+      border-radius: 3px; overflow: hidden;
+    }
+    .progress-bar .progress-fill {
+      height: 100%; background: linear-gradient(90deg, #ff6b35, #f7c948);
+      transition: .3s; border-radius: 3px;
+    }
+    .confirm-text { font-size: 14px; color: #8888aa; margin: 12px 0 20px; }
+
+    .confirm-btns { display: flex; gap: 12px; }
+    .confirm-btns .btn { flex: 1; }
+
+    /* Map Pick */
+    .maps-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 16px 0; }
+    .map-card {
+      background: rgba(255,255,255,0.04); border-radius: 14px;
+      padding: 20px 12px; text-align: center; cursor: pointer;
+      border: 2px solid rgba(255,255,255,0.06); transition: .2s;
+      position: relative; overflow: hidden;
+    }
+    .map-card:hover { border-color: rgba(255,107,53,0.3); }
+    .map-card .map-name { font-weight: 700; font-size: 14px; }
+    .map-card .map-picked {
+      position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(68,204,136,0.15); display: flex; align-items: center;
+      justify-content: center; font-weight: 800; color: #44cc88;
+      font-size: 14px; letter-spacing: 1px;
+    }
+    .map-card.picked-ct { border-color: #4488cc; }
+    .map-card.picked-t { border-color: #cc8844; }
+    .map-card .pick-label {
+      position: absolute; top: 4px; right: 4px;
+      padding: 2px 8px; border-radius: 6px; font-size: 10px; font-weight: 700;
+    }
+    .map-card .pick-label.ct { background: rgba(68,136,204,0.2); color: #4488cc; }
+    .map-card .pick-label.t { background: rgba(204,136,68,0.2); color: #cc8844; }
+
+    .pick-timer {
+      background: rgba(255,255,255,0.06); border-radius: 10px;
+      padding: 8px 16px; text-align: center; margin-bottom: 12px;
+    }
+    .pick-timer .timer { font-size: 24px; font-weight: 800; color: #f7c948; }
+    .pick-timer .pick-info { font-size: 12px; color: #8888aa; margin-top: 4px; }
+
+    /* Player Pick */
+    .player-pick-grid {
+      display: flex; flex-wrap: wrap; gap: 10px; justify-content: center;
+      margin: 16px 0;
+    }
+    .pickable-player {
+      background: rgba(255,255,255,0.04); border-radius: 12px;
+      padding: 12px 20px; text-align: center; cursor: pointer;
+      border: 2px solid rgba(255,255,255,0.06); transition: .2s;
+      width: calc(50% - 5px);
+    }
+    .pickable-player:hover { border-color: #ff6b35; background: rgba(255,107,53,0.08); }
+    .pickable-player.picked { opacity: 0.3; pointer-events: none; border-color: #44cc88; }
+    .pickable-player .pp-avatar {
+      width: 48px; height: 48px; border-radius: 50%;
+      margin: 0 auto 6px; display: flex; align-items: center; justify-content: center;
+      font-weight: 800; font-size: 18px;
+    }
+    .pickable-player.captain .pp-avatar { background: linear-gradient(135deg, #f7c948, #ff6b35); color: #0f0f23; }
+    .pickable-player .pp-name { font-size: 13px; font-weight: 600; }
+    .pickable-player .pp-elo { font-size: 11px; color: #8888aa; }
+    .pickable-player .captain-badge {
+      font-size: 10px; background: rgba(255,107,53,0.15); color: #ff6b35;
+      padding: 2px 8px; border-radius: 6px; display: inline-block; margin-top: 4px;
+    }
+
+    /* Match Ready */
+    .match-ready-info {
+      padding: 16px;
+    }
+    .match-ready-info .team-section { margin-bottom: 16px; }
+    .match-ready-info .team-title {
+      font-size: 14px; font-weight: 700; margin-bottom: 8px;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .match-ready-info .team-title .badge {
+      padding: 2px 10px; border-radius: 6px; font-size: 11px;
+    }
+    .match-ready-info .team-title .badge.t { background: rgba(204,136,68,0.2); color: #cc8844; }
+    .match-ready-info .team-title .badge.ct { background: rgba(68,136,204,0.2); color: #4488cc; }
+    .match-ready-info .team-player {
+      display: flex; align-items: center; gap: 10px;
+      background: rgba(255,255,255,0.04); padding: 10px 14px;
+      border-radius: 10px; margin-bottom: 6px;
+    }
+    .match-ready-info .team-player .role { font-size: 11px; color: #f7c948; font-weight: 600; }
+
+    .match-ready-info .maps-played { margin: 16px 0; }
+    .match-ready-info .maps-played .maps-list {
+      display: flex; gap: 8px; flex-wrap: wrap;
+    }
+    .match-ready-info .maps-played .map-tag {
+      background: rgba(255,255,255,0.06); padding: 6px 12px;
+      border-radius: 8px; font-size: 12px;
+    }
+
+    .match-ready-info .lobby-id-box {
+      background: rgba(255,107,53,0.1); border: 1px solid rgba(255,107,53,0.2);
+      border-radius: 12px; padding: 12px 16px; text-align: center;
+      margin: 16px 0;
+    }
+    .match-ready-info .lobby-id-box .lid-label { font-size: 11px; color: #8888aa; }
+    .match-ready-info .lobby-id-box .lid-value {
+      font-size: 18px; font-weight: 800; color: #f7c948;
+      margin-top: 4px; letter-spacing: 2px;
+    }
+
+    /* Leaderboard */
+    .lb-item {
+      display: flex; align-items: center; padding: 10px 14px;
+      background: rgba(255,255,255,0.03); border-radius: 10px;
+      margin-bottom: 6px; gap: 10px;
+    }
+    .lb-item .rank {
+      width: 28px; text-align: center; font-weight: 800;
+      color: #8888aa; font-size: 14px;
+    }
+    .lb-item .rank.gold { color: #f7c948; }
+    .lb-item .rank.silver { color: #aabbcc; }
+    .lb-item .rank.bronze { color: #cd7f32; }
+    .lb-item .lb-avatar {
+      width: 32px; height: 32px; border-radius: 50%;
+      background: linear-gradient(135deg, #ff6b35, #f7c948);
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 800; font-size: 12px; color: #0f0f23;
+    }
+    .lb-item .lb-info { flex: 1; }
+    .lb-item .lb-name { font-weight: 600; font-size: 13px; }
+    .lb-item .lb-stats { font-size: 11px; color: #8888aa; }
+    .lb-item .lb-elo { font-weight: 800; font-size: 16px; color: #f7c948; }
+
+    /* Profile */
+    .profile-card {
+      background: rgba(255,255,255,0.04); border-radius: 16px;
+      padding: 24px; text-align: center; margin-bottom: 16px;
+    }
+    .profile-card .big-avatar {
+      width: 72px; height: 72px; border-radius: 50%;
+      background: linear-gradient(135deg, #ff6b35, #f7c948);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 28px; font-weight: 800; color: #0f0f23;
+      margin: 0 auto 12px;
+    }
+    .profile-card .p-name { font-size: 20px; font-weight: 800; }
+    .profile-card .p-id { font-size: 13px; color: #8888aa; margin-top: 2px; }
+    .profile-card .p-elo { font-size: 36px; font-weight: 900; color: #f7c948; margin-top: 8px; }
+    .profile-card .p-elo-label { font-size: 12px; color: #8888aa; }
+    .profile-stats { display: flex; gap: 12px; }
+    .profile-stats .stat-box {
+      flex: 1; background: rgba(255,255,255,0.04); border-radius: 12px;
+      padding: 12px; text-align: center;
+    }
+    .profile-stats .stat-box .stat-num { font-size: 20px; font-weight: 800; }
+    .profile-stats .stat-box .stat-label { font-size: 11px; color: #8888aa; margin-top: 2px; }
+    .stat-win .stat-num { color: #44cc88; }
+    .stat-lose .stat-num { color: #ff4444; }
+    .stat-all .stat-num { color: #8888aa; }
+
+    /* Admin Panel */
+    .admin-result {
+      background: rgba(255,255,255,0.04); border-radius: 14px;
+      padding: 14px; margin-bottom: 10px;
+    }
+    .admin-result .ar-match { font-size: 12px; color: #8888aa; }
+    .admin-result .ar-captains { font-size: 14px; font-weight: 600; margin: 6px 0; }
+    .admin-result .ar-captains .ct { color: #4488cc; }
+    .admin-result .ar-captains .t { color: #cc8844; }
+    .admin-result .ar-actions { display: flex; gap: 8px; margin-top: 8px; }
+    .admin-result .ar-actions .btn { flex: 1; padding: 8px; font-size: 12px; }
+
+    /* Back button */
+    .back-btn {
+      background: none; border: none; color: #8888aa; cursor: pointer;
+      font-size: 20px; padding: 4px; margin-right: 8px;
+    }
+    .back-btn:hover { color: #fff; }
+
+    /* Utility */
+    .text-center { text-align: center; }
+    .mt-8 { margin-top: 8px; }
+    .mt-16 { margin-top: 16px; }
+    .mb-16 { margin-bottom: 16px; }
+    .gap-8 { gap: 8px; }
+    .flex { display: flex; }
+    .flex-1 { flex: 1; }
+    .items-center { align-items: center; }
+    .justify-between { justify-content: space-between; }
+
+    /* Toast */
+    .toast {
+      position: fixed; top: 20px; left: 50%; transform: translateX(-50%);
+      background: rgba(0,0,0,0.9); color: #fff; padding: 12px 24px;
+      border-radius: 10px; font-size: 14px; z-index: 1000;
+      display: none; max-width: 360px; text-align: center;
+    }
+    .toast.show { display: block; animation: fadeIn .3s; }
+    .toast.error { border-left: 3px solid #ff4444; }
+    .toast.success { border-left: 3px solid #44cc88; }
+
+    /* Result submit */
+    .result-form { text-align: center; padding: 20px; }
+    .result-form .winner-select { margin: 16px 0; }
+    .result-form .winner-btn {
+      padding: 16px 32px; border-radius: 12px; border: 2px solid rgba(255,255,255,0.06);
+      background: rgba(255,255,255,0.04); color: #fff; cursor: pointer;
+      font-size: 16px; font-weight: 700; margin: 0 8px; transition: .2s;
+    }
+    .result-form .winner-btn:hover { border-color: #ff6b35; }
+    .result-form .winner-btn.selected { border-color: #f7c948; background: rgba(247,201,72,0.1); }
+    .file-upload { margin: 16px 0; }
+    .file-upload label {
+      display: block; padding: 20px; border: 2px dashed rgba(255,255,255,0.1);
+      border-radius: 12px; cursor: pointer; transition: .2s;
+    }
+    .file-upload label:hover { border-color: #ff6b35; background: rgba(255,107,53,0.05); }
+    .file-upload input { display: none; }
+    .file-upload .upload-icon { font-size: 24px; margin-bottom: 4px; }
+    .file-upload .upload-text { font-size: 12px; color: #8888aa; }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar { width: 4px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 2px; }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+    .pulse { animation: pulse 1.5s infinite; }
+
+    @keyframes confetti {
+      0% { transform: translateY(0) rotate(0deg); opacity: 1; }
+      100% { transform: translateY(-100px) rotate(720deg); opacity: 0; }
+    }
+    .confetti-piece {
+      position: fixed; width: 8px; height: 8px; border-radius: 2px;
+      animation: confetti 1s ease-out forwards;
+    }
+
+    /* Scrollable content */
+    .scrollable { max-height: calc(100vh - 160px); overflow-y: auto; padding-right: 4px; }
+
+    /* Responsive */
+    @media (max-width: 420px) {
+      #app { max-width: 100%; }
+    }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <!-- Toast -->
+    <div id="toast" class="toast"></div>
+
+    <!-- Login Page -->
+    <div id="loginPage" class="page active">
+      <div class="page-inner" style="padding: 40px 24px;">
+        <div class="login-logo">
+          <h1>StandLeo</h1>
+          <div class="subtitle">⚔️ FACEIT for Standoff 2</div>
+          <p style="margin-top: 16px; font-size: 13px;">Войди в свой аккаунт чтобы играть</p>
+        </div>
+        <div class="input-group">
+          <label>🎮 ID в игре</label>
+          <input type="text" id="gameIdInput" placeholder="Например: 123456789" maxlength="20">
+          <div class="hint">Твой ID из профиля Standoff 2</div>
+        </div>
+        <div class="input-group">
+          <label>👤 Никнейм</label>
+          <input type="text" id="nicknameInput" placeholder="Твой ник в игре" maxlength="20">
+          <div class="hint">Должен совпадать с игровым ником</div>
+        </div>
+        <button class="btn btn-primary mt-16" id="loginBtn" onclick="handleLogin()">ВОЙТИ</button>
+        <p style="text-align: center; margin-top: 20px; font-size: 12px; color: #555;">
+          Нажимая «Войти», ты подтверждаешь, что ID и никнейм <br>совпадают с твоими игровыми данными
+        </p>
+      </div>
+    </div>
+
+    <!-- Main Page -->
+    <div id="mainPage" class="page">
+      <div class="page-inner">
+        <div class="header">
+          <h2>🏠 StandLeo</h2>
+          <div class="badge" id="eloDisplay">1000 ELO</div>
+        </div>
+        
+        <!-- Quick stats -->
+        <div class="card" style="cursor: pointer;" onclick="showPage('profilePage')">
+          <div class="card-header">
+            <div style="display: flex; align-items: center; gap: 10px;">
+              <div class="player-avatar" id="homeAvatar">S</div>
+              <div>
+                <div class="card-title" id="homeNickname">Player</div>
+                <div class="card-subtitle" id="homeId">ID: -</div>
+              </div>
+            </div>
+            <span style="font-size: 12px; color: #8888aa;">Профиль →</span>
+          </div>
+        </div>
+
+        <!-- Quick actions -->
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 16px;">
+          <div class="card" style="text-align: center; cursor: pointer;" onclick="showPage('playPage')">
+            <div style="font-size: 28px; margin-bottom: 4px;">🎮</div>
+            <div class="card-title">Играть</div>
+            <div class="card-subtitle">Найти матч</div>
+          </div>
+          <div class="card" style="text-align: center; cursor: pointer;" onclick="showPage('leaderboardPage')">
+            <div style="font-size: 28px; margin-bottom: 4px;">🏆</div>
+            <div class="card-title">Лидерборд</div>
+            <div class="card-subtitle">Топ игроки</div>
+          </div>
+        </div>
+
+        <!-- Admin panel (if admin) -->
+        <div id="adminCard" style="display: none;" class="card" onclick="showPage('adminPage')">
+          <div class="card-header">
+            <div>
+              <div class="card-title">🛡️ Админ-панель</div>
+              <div class="card-subtitle">Подтверждение результатов</div>
+            </div>
+            <span style="font-size: 12px; color: #ff6b35;">→</span>
+          </div>
+        </div>
+
+        <!-- News -->
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">📢 Новости</div>
+          </div>
+          <div class="card-subtitle">
+            • Добро пожаловать на StandLeo!<br>
+            • Режим 2v2 уже доступен<br>
+            • Система ELO активна
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Play Page -->
+    <div id="playPage" class="page">
+      <div class="page-inner">
+        <div class="header">
+          <button class="back-btn" onclick="showPage('mainPage')">←</button>
+          <h2>🎮 Играть</h2>
+          <div></div>
+        </div>
+
+        <!-- Mode Selection -->
+        <div id="modeSelection">
+          <p style="color: #8888aa; font-size: 13px; margin-bottom: 16px;">Выбери режим игры</p>
+          <div class="mode-grid">
+            <div class="mode-card selected" onclick="selectMode('2v2', this)">
+              <div class="mode-icon">⚔️</div>
+              <div class="mode-name">2 на 2</div>
+              <div class="mode-desc">Классический режим</div>
+            </div>
+            <div class="mode-card" style="opacity: 0.4; pointer-events: none;">
+              <div class="mode-icon">🔜</div>
+              <div class="mode-name">5 на 5</div>
+              <div class="mode-desc">Скоро!</div>
+            </div>
+          </div>
+          <button class="btn btn-primary" onclick="showLobbies()">НАЙТИ ЛОББИ</button>
+        </div>
+
+        <!-- Lobby List -->
+        <div id="lobbyList" style="display: none;">
+          <div class="flex justify-between items-center mb-16">
+            <p style="color: #8888aa; font-size: 13px;">Доступные лобби</p>
+            <button class="btn btn-small btn-secondary" onclick="refreshLobbies()">🔄</button>
+          </div>
+          <div id="lobbyContainer" class="scrollable"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Lobby Page (inside a lobby) -->
+    <div id="lobbyPage" class="page">
+      <div class="page-inner">
+        <div class="header">
+          <button class="back-btn" onclick="leaveCurrentLobby()">←</button>
+          <h2>🚪 Лобби #<span id="lobbyNum">-</span></h2>
+          <div></div>
+        </div>
+
+        <div id="lobbyPlayers" class="card" style="margin-bottom: 16px;">
+          <div class="card-title mb-16">Игроки в лобби (<span id="playerCount">0</span>/4)</div>
+          <div id="playersList"></div>
+        </div>
+
+        <div id="lobbyActions">
+          <button class="btn btn-secondary" onclick="leaveCurrentLobby()">ПОКИНУТЬ ЛОББИ</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Confirm Page -->
+    <div id="confirmPage" class="page">
+      <div class="page-inner">
+        <div class="header">
+          <h2>✅ Подтверждение</h2>
+          <div></div>
+        </div>
+
+        <div class="confirm-container">
+          <p style="font-size: 16px; font-weight: 700;">Все игроки собрались!</p>
+          <p style="color: #8888aa; font-size: 13px; margin: 8px 0;">Подтверди готовность к матчу</p>
+
+          <div class="confirm-players" id="confirmPlayers"></div>
+
+          <div class="confirm-progress">
+            <div class="progress-bar">
+              <div class="progress-fill" id="confirmProgress" style="width: 0%"></div>
+            </div>
+            <p style="font-size: 13px; color: #8888aa; margin-top: 8px;">
+              <span id="confirmCount" style="color: #f7c948; font-weight: 700;">0</span>/4 подтвердили
+            </p>
+          </div>
+
+          <div class="confirm-btns">
+            <button class="btn btn-success" id="confirmYesBtn" onclick="confirmMatch(true)">✅ ГОТОВ</button>
+            <button class="btn btn-danger" onclick="notConfirmMatch()">❌ НЕ ГОТОВ</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Captain Selection -->
+    <div id="captainPage" class="page">
+      <div class="page-inner">
+        <div class="header">
+          <h2>👑 Капитаны</h2>
+          <div></div>
+        </div>
+
+        <p style="color: #8888aa; font-size: 13px; margin-bottom: 16px;">Капитаны выбраны случайно!</p>
+
+        <div class="card">
+          <div class="card-title mb-16" style="color: #cc8844;">🔶 Команда T</div>
+          <div class="flex items-center gap-8" id="captainTDisplay"></div>
+        </div>
+        <div class="card">
+          <div class="card-title mb-16" style="color: #4488cc;">🔷 Команда CT</div>
+          <div class="flex items-center gap-8" id="captainCTDisplay"></div>
+        </div>
+
+        <div id="myCaptainRole" class="card" style="background: rgba(247,201,72,0.08); border-color: #f7c948; display: none;">
+          <p style="font-size: 14px; font-weight: 600;">🎯 Ты капитан! Выбирай карту.</p>
+        </div>
+
+        <button class="btn btn-primary mt-16" id="startMapPickBtn" style="display: none;" onclick="startMapPick()">НАЧАТЬ ПИК КАРТ</button>
+      </div>
+    </div>
+
+    <!-- Map Pick Page -->
+    <div id="mapPickPage" class="page">
+      <div class="page-inner">
+        <div class="header">
+          <button class="back-btn" style="visibility: hidden;">←</button>
+          <h2>🗺️ Пик карт</h2>
+          <div></div>
+        </div>
+
+        <div class="pick-timer" id="mapPickTimer">
+          <div class="timer" id="mapTimerValue">30</div>
+          <div class="pick-info">Выбирает: <span id="pickingTeam">CT</span></div>
+        </div>
+
+        <div class="maps-grid" id="mapsGrid"></div>
+
+        <div id="mapsPickedInfo" style="display: none;" class="card">
+          <div class="card-title">Выбранные карты</div>
+          <div id="pickedMapsList" style="margin-top: 8px;"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Player Pick Page -->
+    <div id="playerPickPage" class="page">
+      <div class="page-inner">
+        <div class="header">
+          <h2>👥 Пик игроков</h2>
+          <div></div>
+        </div>
+
+        <div class="pick-timer" id="playerPickTimer">
+          <div class="timer" id="playerTimerValue">30</div>
+          <div class="pick-info">Выбирает: <span id="playerPickTeam">T</span></div>
+        </div>
+
+        <p style="color: #8888aa; font-size: 13px; margin-bottom: 8px;">Доступные игроки:</p>
+        <div class="player-pick-grid" id="playerPickGrid"></div>
+
+        <div id="pickedPlayersInfo" class="card">
+          <div class="card-title">Команды</div>
+          <div id="pickedTeamsDisplay" class="mt-8"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Match Ready Page -->
+    <div id="matchReadyPage" class="page">
+      <div class="page-inner">
+        <div class="header">
+          <h2>⚔️ Матч готов!</h2>
+          <div></div>
+        </div>
+
+        <div class="match-ready-info" id="matchReadyInfo"></div>
+
+        <div id="matchActions">
+          <button class="btn btn-primary" onclick="showSubmitResult()" style="margin-top: 8px;">📸 ОТПРАВИТЬ РЕЗУЛЬТАТЫ</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Submit Result Page -->
+    <div id="submitResultPage" class="page">
+      <div class="page-inner">
+        <div class="header">
+          <button class="back-btn" onclick="showPage('matchReadyPage')">←</button>
+          <h2>📸 Результаты</h2>
+          <div></div>
+        </div>
+
+        <div class="result-form">
+          <p style="font-weight: 700; margin-bottom: 16px;">Кто победил?</p>
+          <div class="winner-select">
+            <button class="winner-btn" id="winnerT" onclick="selectWinner('T')">🔶 T (Нападающие)</button>
+            <button class="winner-btn" id="winnerCT" onclick="selectWinner('CT')">🔷 CT (Защитники)</button>
+          </div>
+
+          <div class="file-upload">
+            <label for="screenshotInput">
+              <div class="upload-icon">📷</div>
+              <div class="upload-text">Прикрепить скриншот результата</div>
+              <div style="font-size: 11px; color: #555; margin-top: 4px;">(необязательно)</div>
+            </label>
+            <input type="file" id="screenshotInput" accept="image/*" capture="environment">
+          </div>
+
+          <button class="btn btn-primary mt-16" id="submitResultBtn" onclick="submitMatchResult()">ОТПРАВИТЬ</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Leaderboard Page -->
+    <div id="leaderboardPage" class="page">
+      <div class="page-inner">
+        <div class="header">
+          <button class="back-btn" onclick="showPage('mainPage')">←</button>
+          <h2>🏆 Лидерборд</h2>
+          <div></div>
+        </div>
+        <div id="topPlayers"></div>
+      </div>
+    </div>
+
+    <!-- Profile Page -->
+    <div id="profilePage" class="page">
+      <div class="page-inner">
+        <div class="header">
+          <button class="back-btn" onclick="showPage('mainPage')">←</button>
+          <h2>👤 Профиль</h2>
+          <div></div>
+        </div>
+
+        <div class="profile-card" id="profileCard"></div>
+        <div class="profile-stats" id="profileStats"></div>
+      </div>
+    </div>
+
+    <!-- Admin Page -->
+    <div id="adminPage" class="page">
+      <div class="page-inner">
+        <div class="header">
+          <button class="back-btn" onclick="showPage('mainPage')">←</button>
+          <h2>🛡️ Админ-панель</h2>
+          <div></div>
+        </div>
+
+        <p style="color: #8888aa; font-size: 13px; margin-bottom: 16px;">Ожидающие подтверждения результаты:</p>
+        <div id="pendingResults"></div>
+        <button class="btn btn-secondary mt-16" onclick="loadPendingResults()">🔄 Обновить</button>
+      </div>
+    </div>
+
+    <!-- Bottom Navigation -->
+    <div class="bottom-nav" id="bottomNav">
+      <div class="nav-item active" onclick="navigateHome()">
+        <div class="nav-icon">🏠</div>
+        <div class="nav-label">Главная</div>
+      </div>
+      <div class="nav-item" onclick="navigatePlay()">
+        <div class="nav-icon">🎮</div>
+        <div class="nav-label">Играть</div>
+      </div>
+      <div class="nav-item" onclick="navigateLeaderboard()">
+        <div class="nav-icon">🏆</div>
+        <div class="nav-label">Топ</div>
+      </div>
+      <div class="nav-item" onclick="navigateProfile()">
+        <div class="nav-icon">👤</div>
+        <div class="nav-label">Профиль</div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ========== STATE ==========
+    let currentUser = null;
+    let currentLobby = null;
+    let currentMatchId = null;
+    let ws = null;
+    let isCaptain = false;
+    let myTeam = null;
+    let selectedWinner = null;
+    let confirmTimer = null;
+    let pickTimer = null;
+    let pickTimerValue = 30;
+    let currentPickPhase = null; // 'maps' or 'players'
+    let availableMaps = ['Breeze', 'Dune', 'Hanami', 'Prison', 'Province', 'Rust', 'Sandstone'];
+    let pickedMaps = [];
+    let currentPickingTeam = 'CT'; // CT picks first, then T, then CT
+    let currentCaptainTId = null;
+    let currentCaptainCTId = null;
+    let matchPlayers = [];
+    let playerPickIndex = 0;
+    let pickedTeamT = [];
+    let pickedTeamCT = [];
+    let currentPickingTeamPlayers = 'T'; // T picks first in player phase
+
+    // ========== INIT ==========
+    document.addEventListener('DOMContentLoaded', () => {
+      // Hide nav on login
+      document.getElementById('bottomNav').style.display = 'none';
+    });
+
+    // ========== LOGIN ==========
+    async function handleLogin() {
+      const gameId = document.getElementById('gameIdInput').value.trim();
+      const nickname = document.getElementById('nicknameInput').value.trim();
+      
+      if (!gameId || !nickname) {
+        showToast('Заполни все поля!', 'error');
+        return;
+      }
+      if (!/^\d+$/.test(gameId)) {
+        showToast('ID должен содержать только цифры!', 'error');
+        return;
+      }
+      if (nickname.length < 2) {
+        showToast('Никнейм слишком короткий!', 'error');
+        return;
+      }
+
+      const btn = document.getElementById('loginBtn');
+      btn.disabled = true;
+      btn.textContent = 'ВХОД...';
+
+      try {
+        const res = await fetch('/api/auth', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ gameId, nickname })
+        });
+        const data = await res.json();
+        if (data.error) {
+          showToast(data.error, 'error');
+          btn.disabled = false;
+          btn.textContent = 'ВОЙТИ';
+          return;
+        }
+        
+        currentUser = data.user;
+        localStorage.setItem('standleo_user_id', currentUser.id);
+        
+        // Setup WebSocket
+        connectWebSocket();
+        
+        // Show main page
+        document.getElementById('loginPage').classList.remove('active');
+        document.getElementById('mainPage').classList.add('active');
+        document.getElementById('bottomNav').style.display = 'flex';
+        updateUI();
+        
+        showToast('Успешный вход!', 'success');
+      } catch (e) {
+        showToast('Ошибка соединения с сервером', 'error');
+        btn.disabled = false;
+        btn.textContent = 'ВОЙТИ';
+      }
+    }
+
+    // ========== WEBSOCKET ==========
+    function connectWebSocket() {
+      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+      const host = window.location.host;
+      ws = new WebSocket(`${protocol}//${host}`);
+      
+      ws.onopen = () => {
+        ws.send(JSON.stringify({ type: 'auth', userId: currentUser.id }));
+      };
+      
+      ws.onmessage = (event) => {
+        const msg = JSON.parse(event.data);
+        handleWSMessage(msg);
+      };
+      
+      ws.onclose = () => {
+        // Reconnect after 3 seconds
+        setTimeout(connectWebSocket, 3000);
+      };
+    }
+
+    function handleWSMessage(msg) {
+      switch (msg.type) {
+        case 'lobbies_update':
+          updateLobbyList(msg.lobbies);
+          break;
+        case 'lobby_full':
+          // Show confirm page
+          currentLobby = msg.lobby;
+          showConfirmPage(msg.lobby);
+          break;
+        case 'player_confirmed':
+          updateConfirmDisplay(msg.userId, msg.confirmed);
+          break;
+        case 'confirm_count':
+          updateConfirmProgress(msg.count, msg.total);
+          break;
+        case 'confirm_failed':
+          showToast('Игрок не подтвердил матч. Возвращаемся...', 'error');
+          showPage('playPage');
+          document.getElementById('lobbyList').style.display = 'block';
+          break;
+        case 'captains_picked':
+          handleCaptainsPicked(msg);
+          break;
+        case 'map_picked':
+          handleMapPicked(msg);
+          break;
+        case 'maps_picked':
+          handleMapsPicked(msg);
+          break;
+        case 'start_player_pick':
+          startPlayerPickPhase(msg);
+          break;
+        case 'player_picked':
+          handlePlayerPicked(msg);
+          break;
+        case 'match_ready':
+          handleMatchReady(msg);
+          break;
+        case 'result_submitted':
+          showToast('Результаты отправлены администраторам!', 'success');
+          break;
+        case 'result_confirmed':
+          showToast('Результат подтвержден админом! ELO обновлено.', 'success');
+          loadPendingResults();
+          break;
+      }
+    }
+
+    // ========== NAVIGATION ==========
+    function showPage(pageId) {
+      document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+      document.getElementById(pageId).classList.add('active');
+      
+      // Update nav
+      document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+      const navMap = {
+        'mainPage': 0,
+        'playPage': 1,
+        'leaderboardPage': 2,
+        'profilePage': 3
+      };
+      if (navMap[pageId] !== undefined) {
+        document.querySelectorAll('.nav-item')[navMap[pageId]].classList.add('active');
+      }
+
+      // Load data on page show
+      if (pageId === 'leaderboardPage') loadLeaderboard();
+      if (pageId === 'profilePage') loadProfile();
+      if (pageId === 'adminPage') loadPendingResults();
+    }
+
+    function navigateHome() { showPage('mainPage'); }
+    function navigatePlay() { showPage('playPage'); }
+    function navigateLeaderboard() { showPage('leaderboardPage'); }
+    function navigateProfile() { showPage('profilePage'); }
+
+    // ========== UI UPDATE ==========
+    function updateUI() {
+      if (!currentUser) return;
+      document.getElementById('eloDisplay').textContent = `${currentUser.elo} ELO`;
+      document.getElementById('homeNickname').textContent = currentUser.nickname;
+      document.getElementById('homeId').textContent = `ID: ${currentUser.game_id}`;
+      document.getElementById('homeAvatar').textContent = currentUser.nickname.charAt(0).toUpperCase();
+      
+      // Show admin card if admin
+      if (currentUser.is_admin) {
+        document.getElementById('adminCard').style.display = 'block';
+      } else {
+        document.getElementById('adminCard').style.display = 'none';
+      }
+      
+      // Refresh profile
+      fetchProfile();
+    }
+
+    async function fetchProfile() {
+      try {
+        const res = await fetch('/api/profile', {
+          headers: { 'x-user-id': currentUser.id }
+        });
+        const data = await res.json();
+        if (data.user) {
+          currentUser = data.user;
+          document.getElementById('eloDisplay').textContent = `${currentUser.elo} ELO`;
+        }
+      } catch (e) {}
+    }
+
+    // ========== PLAY FLOW ==========
+    let selectedMode = '2v2';
+
+    function selectMode(mode, el) {
+      document.querySelectorAll('.mode-card').forEach(c => c.classList.remove('selected'));
+      el.classList.add('selected');
+      selectedMode = mode;
+    }
+
+    function showLobbies() {
+      document.getElementById('modeSelection').style.display = 'none';
+      document.getElementById('lobbyList').style.display = 'block';
+      refreshLobbies();
+    }
+
+    async function refreshLobbies() {
+      try {
+        const res = await fetch('/api/lobbies', {
+          headers: { 'x-user-id': currentUser.id }
+        });
+        const data = await res.json();
+        updateLobbyList(data.lobbies);
+      } catch (e) {
+        showToast('Ошибка загрузки лобби', 'error');
+      }
+    }
+
+    function updateLobbyList(lobbies) {
+      const container = document.getElementById('lobbyContainer');
+      if (!lobbies || lobbies.length === 0) {
+        container.innerHTML = '<p style="color: #8888aa; text-align: center; padding: 40px;">Нет доступных лобби</p>';
+        return;
+      }
+      
+      container.innerHTML = lobbies.map(lobby => {
+        const playerCount = [lobby.player1_id, lobby.player2_id, lobby.player3_id, lobby.player4_id].filter(Boolean).length;
+        const isFull = playerCount >= 4;
+        const isInMatch = lobby.status === 'in_match';
+        const disabled = isFull || isInMatch;
+        
+        return `
+          <div class="lobby-card" onclick="${disabled ? '' : 'joinLobby(' + lobby.id + ')'}">
+            <div class="lobby-num">${lobby.lobby_number}</div>
+            <div class="lobby-info">
+              <div class="lobby-name">Лобби #${lobby.lobby_number}</div>
+              <div class="lobby-players">
+                Игроки: <span>${playerCount}</span>/4
+                ${lobby.players ? lobby.players.map(p => 
+                  p ? `<span style="color: #fff; margin-left: 4px;">${p.nickname}</span>` : ''
+                ).join('') : ''}
+              </div>
+            </div>
+            ${isInMatch ? '<span class="status-full">В игре</span>' : 
+              isFull ? '<span class="status-full">Полное</span>' : 
+              '<button class="join-btn">Войти</button>'}
+          </div>
+        `;
+      }).join('');
+    }
+
+    async function joinLobby(lobbyId) {
+      try {
+        const res = await fetch(`/api/lobbies/${lobbyId}/join`, {
+          method: 'POST',
+          headers: { 'x-user-id': currentUser.id }
+        });
+        const data = await res.json();
+        if (data.error) {
+          showToast(data.error, 'error');
+          return;
+        }
+        
+        currentLobby = data.lobby;
+        showLobbyPage(data.lobby);
+      } catch (e) {
+        showToast('Ошибка при входе в лобби', 'error');
+      }
+    }
+
+    function showLobbyPage(lobby) {
+      showPage('lobbyPage');
+      document.getElementById('lobbyNum').textContent = lobby.lobby_number;
+      updateLobbyPlayers(lobby);
+    }
+
+    function updateLobbyPlayers(lobby) {
+      const players = [lobby.player1_id, lobby.player2_id, lobby.player3_id, lobby.player4_id].filter(Boolean);
+      document.getElementById('playerCount').textContent = players.length;
+      
+      const list = document.getElementById('playersList');
+      list.innerHTML = players.map((pid, i) => {
+        const player = lobby.players ? lobby.players.find(p => p && p.id == pid) : null;
+        const name = player ? player.nickname : `Игрок ${i + 1}`;
+        const isMe = pid == currentUser.id;
+        return `
+          <div class="flex items-center justify-between" style="padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,0.04);">
+            <div class="flex items-center gap-8">
+              <div class="player-avatar small">${name.charAt(0)}</div>
+              <div>
+                <span style="font-weight: 600;">${name}</span>
+                ${isMe ? '<span style="color: #ff6b35; font-size: 11px; margin-left: 4px;">(это ты)</span>' : ''}
+              </div>
+            </div>
+            ${isMe ? '<span style="color: #44cc88; font-size: 11px;">✔️</span>' : ''}
+          </div>
+        `;
+      }).join('');
+    }
+
+    async function leaveCurrentLobby() {
+      if (!currentLobby) {
+        showPage('playPage');
+        document.getElementById('modeSelection').style.display = 'block';
+        document.getElementById('lobbyList').style.display = 'none';
+        return;
+      }
+      
+      try {
+        await fetch(`/api/lobbies/${currentLobby.id}/leave`, {
+          method: 'POST',
+          headers: { 'x-user-id': currentUser.id }
+        });
+        currentLobby = null;
+        showPage('playPage');
+        document.getElementById('modeSelection').style.display = 'block';
+        document.getElementById('lobbyList').style.display = 'none';
+      } catch (e) {
+        showToast('Ошибка', 'error');
+      }
+    }
+
+    // ========== CONFIRM MATCH ==========
+    function showConfirmPage(lobby) {
+      showPage('confirmPage');
+      const container = document.getElementById('confirmPlayers');
+      const players = lobby.players || [];
+      
+      container.innerHTML = players.map(p => `
+        <div class="confirm-player" id="cp_${p.id}">
+          <div class="cp-avatar">${p.nickname.charAt(0)}</div>
+          <div class="checkmark">✅</div>
+          <div class="cp-name">${p.nickname}</div>
+        </div>
+      `).join('');
+      
+      document.getElementById('confirmProgress').style.width = '0%';
+      document.getElementById('confirmCount').textContent = '0';
+    }
+
+    function updateConfirmDisplay(userId, confirmed) {
+      const el = document.getElementById(`cp_${userId}`);
+      if (el) {
+        if (confirmed) el.classList.add('confirmed');
+        else el.classList.remove('confirmed');
+      }
+    }
+
+    function updateConfirmProgress(count, total) {
+      const pct = (count / total) * 100;
+      document.getElementById('confirmProgress').style.width = `${pct}%`;
+      document.getElementById('confirmCount').textContent = count;
+    }
+
+    async function confirmMatch(confirmed) {
+      if (!currentLobby) return;
+      
+      try {
+        const res = await fetch(`/api/lobbies/${currentLobby.id}/confirm`, {
+          method: 'POST',
+          headers: { 'x-user-id': currentUser.id, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ confirmed })
+        });
+        const data = await res.json();
+        if (data.error) showToast(data.error, 'error');
+      } catch (e) {
+        showToast('Ошибка', 'error');
+      }
+    }
+
+    async function notConfirmMatch() {
+      if (!currentLobby) return;
+      try {
+        await fetch(`/api/lobbies/${currentLobby.id}/not_confirm`, {
+          method: 'POST',
+          headers: { 'x-user-id': currentUser.id }
+        });
+        currentLobby = null;
+        showToast('Ты не подтвердил матч', 'error');
+        showPage('playPage');
+        document.getElementById('modeSelection').style.display = 'block';
+        document.getElementById('lobbyList').style.display = 'none';
+      } catch (e) {}
+    }
+
+    // ========== CAPTAINS ==========
+    function handleCaptainsPicked(msg) {
+      currentMatchId = msg.matchId;
+      currentCaptainTId = msg.captainTId;
+      currentCaptainCTId = msg.captainCTId;
+      matchPlayers = msg.players;
+      pickedMaps = [];
+      currentPickingTeam = 'CT';
+      
+      document.getElementById('captainTDisplay').innerHTML = `
+        <div class="player-avatar">${msg.captainT.nickname.charAt(0)}</div>
+        <div>
+          <div style="font-weight: 700;">${msg.captainT.nickname}</div>
+          <div style="font-size: 12px; color: #cc8844;">Капитан T</div>
+        </div>
+      `;
+      document.getElementById('captainCTDisplay').innerHTML = `
+        <div class="player-avatar">${msg.captainCT.nickname.charAt(0)}</div>
+        <div>
+          <div style="font-weight: 700;">${msg.captainCT.nickname}</div>
+          <div style="font-size: 12px; color: #4488cc;">Капитан CT</div>
+        </div>
+      `;
+      
+      isCaptain = (currentUser.id == currentCaptainTId || currentUser.id == currentCaptainCTId);
+      myTeam = currentUser.id == currentCaptainTId ? 'T' : (currentUser.id == currentCaptainCTId ? 'CT' : null);
+      
+      const roleEl = document.getElementById('myCaptainRole');
+      const startBtn = document.getElementById('startMapPickBtn');
+      
+      if (isCaptain) {
+        roleEl.style.display = 'block';
+        roleEl.innerHTML = `🎯 Ты капитан команды <strong>${myTeam}</strong>!`;
+        // CT captain starts map pick
+        if (myTeam === 'CT') {
+          startBtn.style.display = 'block';
+          startBtn.textContent = 'НАЧАТЬ ПИК КАРТ';
+        }
+      } else {
+        roleEl.style.display = 'block';
+        roleEl.innerHTML = '⏳ Ожидаем выбора карт от капитанов...';
+        startBtn.style.display = 'none';
+      }
+
+      showPage('captainPage');
+    }
+
+    // ========== MAP PICK ==========
+    function startMapPick() {
+      showPage('mapPickPage');
+      renderMaps();
+      startPickTimer('maps');
+    }
+
+    function renderMaps() {
+      const grid = document.getElementById('mapsGrid');
+      grid.innerHTML = availableMaps.map(map => `
+        <div class="map-card" id="map_${map}" onclick="pickMap('${map}')">
+          <div class="map-name">${map}</div>
+        </div>
+      `).join('');
+    }
+
+    function pickMap(mapName) {
+      if (!isCaptain || !currentMatchId) return;
+      
+      // Only the current picking team's captain can pick
+      if ((currentPickingTeam === 'CT' && currentUser.id != currentCaptainCTId) ||
+          (currentPickingTeam === 'T' && currentUser.id != currentCaptainTId)) {
+        showToast('Сейчас выбирает другой капитан', 'error');
+        return;
+      }
+
+      fetch(`/api/match/${currentMatchId}/pick_map`, {
+        method: 'POST',
+        headers: { 'x-user-id': currentUser.id, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ map: mapName, team: currentPickingTeam })
+      }).catch(e => {});
+    }
+
+    function handleMapPicked(msg) {
+      pickedMaps.push({ map: msg.map, pickedBy: msg.pickedBy });
+      
+      const el = document.getElementById(`map_${msg.map}`);
+      if (el) {
+        el.innerHTML = `
+          <div class="map-name">${msg.map}</div>
+          <div class="pick-label ${msg.pickedBy.toLowerCase()}">${msg.pickedBy}</div>
+          <div class="map-picked">✓ ВЫБРАНА</div>
+        `;
+      }
+      
+      // Toggle picking team: CT -> T -> CT
+      currentPickingTeam = currentPickingTeam === 'CT' ? 'T' : 'CT';
+      document.getElementById('pickingTeam').textContent = currentPickingTeam;
+      
+      // Show picked maps info
+      document.getElementById('mapsPickedInfo').style.display = 'block';
+      document.getElementById('pickedMapsList').innerHTML = pickedMaps.map(m => 
+        `<span class="map-tag" style="background: ${m.pickedBy === 'CT' ? 'rgba(68,136,204,0.15)' : 'rgba(204,136,68,0.15)'}; color: ${m.pickedBy === 'CT' ? '#4488cc' : '#cc8844'};">${m.map} (${m.pickedBy})</span>`
+      ).join('');
+      
+      resetPickTimer();
+    }
+
+    function handleMapsPicked(msg) {
+      showToast('Все карты выбраны!', 'success');
+      // Will transition to player pick via start_player_pick message
+    }
+
+    // ========== PLAYER PICK ==========
+    function startPlayerPickPhase(msg) {
+      currentPickPhase = 'players';
+      currentPickingTeamPlayers = 'T'; // T picks first
+      playerPickIndex = 0;
+      pickedTeamT = [currentCaptainTId];
+      pickedTeamCT = [currentCaptainCTId];
+      
+      showPage('playerPickPage');
+      renderPlayerPickGrid();
+      startPickTimer('players');
+    }
+
+    function renderPlayerPickGrid() {
+      const grid = document.getElementById('playerPickGrid');
+      const availablePlayers = matchPlayers.filter(p => 
+        !pickedTeamT.includes(p.id) && !pickedTeamCT.includes(p.id)
+      );
+      
+      grid.innerHTML = availablePlayers.map(p => {
+        const isCap = p.id == currentCaptainTId || p.id == currentCaptainCTId;
+        const alreadyPicked = pickedTeamT.includes(p.id) || pickedTeamCT.includes(p.id);
+        return `
+          <div class="pickable-player ${isCap ? 'captain' : ''} ${alreadyPicked ? 'picked' : ''}" 
+               id="pp_${p.id}" onclick="pickPlayer(${p.id})">
+            <div class="pp-avatar">${p.nickname.charAt(0)}</div>
+            <div class="pp-name">${p.nickname}</div>
+            <div class="pp-elo">${p.elo} ELO</div>
+            ${isCap ? '<div class="captain-badge">👑 Капитан</div>' : ''}
+          </div>
+        `;
+      }).join('');
+      
+      document.getElementById('playerPickTeam').textContent = currentPickingTeamPlayers;
+      updateTeamsDisplay();
+    }
+
+    function pickPlayer(playerId) {
+      if (!isCaptain || !currentMatchId) return;
+      
+      // Check if it's this captain's turn
+      const teamPickingFirst = currentPickingTeamPlayers;
+      if ((teamPickingFirst === 'T' && currentUser.id != currentCaptainTId) ||
+          (teamPickingFirst === 'CT' && currentUser.id != currentCaptainCTId)) {
+        showToast('Сейчас выбирает другой капитан', 'error');
+        return;
+      }
+
+      fetch(`/api/match/${currentMatchId}/pick_player`, {
+        method: 'POST',
+        headers: { 'x-user-id': currentUser.id, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ playerId, team: teamPickingFirst })
+      }).catch(e => {});
+    }
+
+    function handlePlayerPicked(msg) {
+      if (msg.team === 'T') pickedTeamT.push(msg.player.id);
+      else pickedTeamCT.push(msg.player.id);
+      
+      renderPlayerPickGrid();
+      resetPickTimer();
+      
+      // Toggle picking team
+      currentPickingTeamPlayers = currentPickingTeamPlayers === 'T' ? 'CT' : 'T';
+      document.getElementById('playerPickTeam').textContent = currentPickingTeamPlayers;
+    }
+
+    function updateTeamsDisplay() {
+      const display = document.getElementById('pickedTeamsDisplay');
+      display.innerHTML = `
+        <div style="margin-bottom: 8px;">
+          <span style="color: #cc8844; font-weight: 700;">🔶 T:</span>
+          ${pickedTeamT.map(id => {
+            const p = matchPlayers.find(pl => pl.id == id);
+            return p ? `<span style="margin-left: 8px;">${p.nickname}</span>` : '';
+          }).join('')}
+        </div>
+        <div>
+          <span style="color: #4488cc; font-weight: 700;">🔷 CT:</span>
+          ${pickedTeamCT.map(id => {
+            const p = matchPlayers.find(pl => pl.id == id);
+            return p ? `<span style="margin-left: 8px;">${p.nickname}</span>` : '';
+          }).join('')}
+        </div>
+      `;
+    }
+
+    // ========== MATCH READY ==========
+    function handleMatchReady(msg) {
+      showPage('matchReadyPage');
+      
+      const info = document.getElementById('matchReadyInfo');
+      const maps = msg.maps || [];
+      
+      info.innerHTML = `
+        <div class="team-section">
+          <div class="team-title">
+            <span>🔶 Команда T</span>
+            <span class="badge t">T</span>
+          </div>
+          ${msg.teamT.map(p => `
+            <div class="team-player">
+              <div class="player-avatar small">${p.nickname.charAt(0)}</div>
+              <div>
+                <div style="font-weight: 600;">${p.nickname}</div>
+                <div style="font-size: 11px; color: #8888aa;">${p.elo} ELO</div>
+              </div>
+              ${p.id == msg.captainT.id ? '<div class="role">👑 Капитан</div>' : ''}
+            </div>
+          `).join('')}
+        </div>
+
+        <div class="team-section">
+          <div class="team-title">
+            <span>🔷 Команда CT</span>
+            <span class="badge ct">CT</span>
+          </div>
+          ${msg.teamCT.map(p => `
+            <div class="team-player">
+              <div class="player-avatar small">${p.nickname.charAt(0)}</div>
+              <div>
+                <div style="font-weight: 600;">${p.nickname}</div>
+                <div style="font-size: 11px; color: #8888aa;">${p.elo} ELO</div>
+              </div>
+              ${p.id == msg.captainCT.id ? '<div class="role">👑 Капитан</div>' : ''}
+            </div>
+          `).join('')}
+        </div>
+
+        <div class="maps-played">
+          <div style="font-size: 13px; color: #8888aa; margin-bottom: 8px;">🗺️ Карты:</div>
+          <div class="maps-list">
+            ${maps.map(m => `<span class="map-tag">${m.map}</span>`).join('')}
+          </div>
+        </div>
+
+        <div class="lobby-id-box">
+          <div class="lid-label">🔑 ID лобби создателя (капитан CT):</div>
+          <div class="lid-value">${msg.captainCT.nickname}</div>
+          <div style="font-size: 12px; color: #8888aa; margin-top: 4px;">
+            Свяжись с капитаном CT для получения ID приватки
+          </div>
+        </div>
+      `;
+    }
+
+    // ========== SUBMIT RESULT ==========
+    function showSubmitResult() {
+      showPage('submitResultPage');
+      selectedWinner = null;
+      document.querySelectorAll('.winner-btn').forEach(b => b.classList.remove('selected'));
+    }
+
+    function selectWinner(winner) {
+      selectedWinner = winner;
+      document.querySelectorAll('.winner-btn').forEach(b => b.classList.remove('selected'));
+      if (winner === 'T') document.getElementById('winnerT').classList.add('selected');
+      else document.getElementById('winnerCT').classList.add('selected');
+    }
+
+    async function submitMatchResult() {
+      if (!selectedWinner) {
+        showToast('Выбери победителя!', 'error');
+        return;
+      }
+      if (!currentMatchId) {
+        showToast('Нет активного матча', 'error');
+        return;
+      }
+
+      const btn = document.getElementById('submitResultBtn');
+      btn.disabled = true;
+      btn.textContent = 'ОТПРАВКА...';
+
+      const formData = new FormData();
+      formData.append('winner', selectedWinner);
+      const fileInput = document.getElementById('screenshotInput');
+      if (fileInput.files[0]) {
+        formData.append('screenshot', fileInput.files[0]);
+      }
+
+      try {
+        const res = await fetch(`/api/match/${currentMatchId}/submit_result`, {
+          method: 'POST',
+          headers: { 'x-user-id': currentUser.id },
+          body: formData
+        });
+        const data = await res.json();
+        if (data.error) {
+          showToast(data.error, 'error');
+          btn.disabled = false;
+          btn.textContent = 'ОТПРАВИТЬ';
+          return;
+        }
+        
+        showToast('Результаты отправлены администраторам! Ожидай подтверждения.', 'success');
+        btn.textContent = '✅ ОТПРАВЛЕНО';
+        currentMatchId = null;
+      } catch (e) {
+        showToast('Ошибка отправки', 'error');
+        btn.disabled = false;
+        btn.textContent = 'ОТПРАВИТЬ';
+      }
+    }
+
+    // ========== TIMER ==========
+    function startPickTimer(phase) {
+      currentPickPhase = phase;
+      pickTimerValue = 30;
+      updateTimerDisplay();
+      
+      if (pickTimer) clearInterval(pickTimer);
+      pickTimer = setInterval(() => {
+        pickTimerValue--;
+        updateTimerDisplay();
+        
+        if (pickTimerValue <= 0) {
+          clearInterval(pickTimer);
+          autoPick();
+        }
+      }, 1000);
+    }
+
+    function resetPickTimer() {
+      if (pickTimer) clearInterval(pickTimer);
+      if (currentPickPhase) startPickTimer(currentPickPhase);
+    }
+
+    function updateTimerDisplay() {
+      if (currentPickPhase === 'maps') {
+        document.getElementById('mapTimerValue').textContent = pickTimerValue;
+        if (pickTimerValue <= 5) document.getElementById('mapTimerValue').style.color = '#ff4444';
+        else document.getElementById('mapTimerValue').style.color = '#f7c948';
+      } else if (currentPickPhase === 'players') {
+        document.getElementById('playerTimerValue').textContent = pickTimerValue;
+        if (pickTimerValue <= 5) document.getElementById('playerTimerValue').style.color = '#ff4444';
+        else document.getElementById('playerTimerValue').style.color = '#f7c948';
+      }
+    }
+
+    function autoPick() {
+      if (currentPickPhase === 'maps') {
+        // Auto-pick a random available map
+        const pickedMapNames = pickedMaps.map(m => m.map);
+        const available = availableMaps.filter(m => !pickedMapNames.includes(m));
+        if (available.length > 0) {
+          const randomMap = available[Math.floor(Math.random() * available.length)];
+          pickMap(randomMap);
+        }
+      } else if (currentPickPhase === 'players') {
+        // Auto-pick a random available player
+        const available = matchPlayers.filter(p => 
+          !pickedTeamT.includes(p.id) && !pickedTeamCT.includes(p.id)
+        );
+        if (available.length > 0) {
+          const randomPlayer = available[Math.floor(Math.random() * available.length)];
+          pickPlayer(randomPlayer.id);
+        }
+      }
+    }
+
+    // ========== LEADERBOARD ==========
+    async function loadLeaderboard() {
+      const container = document.getElementById('topPlayers');
+      container.innerHTML = '<p style="color: #8888aa; text-align: center; padding: 20px;">Загрузка...</p>';
+      
+      try {
+        const res = await fetch('/api/leaderboard', {
+          headers: { 'x-user-id': currentUser.id }
+        });
+        const data = await res.json();
+        
+        if (!data.leaderboard || data.leaderboard.length === 0) {
+          container.innerHTML = '<p style="color: #8888aa; text-align: center; padding: 20px;">Нет данных</p>';
+          return;
+        }
+        
+        container.innerHTML = data.leaderboard.map((p, i) => {
+          const rankClass = i === 0 ? 'gold' : i === 1 ? 'silver' : i === 2 ? 'bronze' : '';
+          const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `#${i + 1}`;
+          return `
+            <div class="lb-item">
+              <div class="rank ${rankClass}">${medal}</div>
+              <div class="lb-avatar">${p.nickname.charAt(0)}</div>
+              <div class="lb-info">
+                <div class="lb-name">${p.nickname}</div>
+                <div class="lb-stats">${p.wins}W / ${p.losses}L (${p.matches_played} матчей)</div>
+              </div>
+              <div class="lb-elo">${p.elo}</div>
+            </div>
+          `;
+        }).join('');
+      } catch (e) {
+        container.innerHTML = '<p style="color: #ff4444; text-align: center; padding: 20px;">Ошибка загрузки</p>';
+      }
+    }
+
+    // ========== PROFILE ==========
+    async function loadProfile() {
+      try {
+        const res = await fetch('/api/profile', {
+          headers: { 'x-user-id': currentUser.id }
+        });
+        const data = await res.json();
+        const p = data.user;
+        
+        document.getElementById('profileCard').innerHTML = `
+          <div class="big-avatar">${p.nickname.charAt(0)}</div>
+          <div class="p-name">${p.nickname}</div>
+          <div class="p-id">ID: ${p.game_id}</div>
+          <div class="p-elo">${p.elo}</div>
+          <div class="p-elo-label">ELO Рейтинг</div>
+          ${p.is_admin ? '<div style="margin-top: 8px;"><span style="background: rgba(255,107,53,0.15); color: #ff6b35; padding: 4px 12px; border-radius: 8px; font-size: 12px; font-weight: 600;">🛡️ Администратор</span></div>' : ''}
+        `;
+        
+        document.getElementById('profileStats').innerHTML = `
+          <div class="stat-box stat-win">
+            <div class="stat-num">${p.wins}</div>
+            <div class="stat-label">Победы</div>
+          </div>
+          <div class="stat-box stat-lose">
+            <div class="stat-num">${p.losses}</div>
+            <div class="stat-label">Поражения</div>
+          </div>
+          <div class="stat-box stat-all">
+            <div class="stat-num">${p.matches_played}</div>
+            <div class="stat-label">Всего игр</div>
+          </div>
+        `;
+      } catch (e) {
+        showToast('Ошибка загрузки профиля', 'error');
+      }
+    }
+
+    // ========== ADMIN ==========
+    async function loadPendingResults() {
+      const container = document.getElementById('pendingResults');
+      container.innerHTML = '<p style="color: #8888aa; text-align: center; padding: 20px;">Загрузка...</p>';
+      
+      try {
+        const res = await fetch('/api/admin/pending', {
+          headers: { 'x-user-id': currentUser.id }
+        });
+        const data = await res.json();
+        
+        if (!data.results || data.results.length === 0) {
+          container.innerHTML = '<p style="color: #44cc88; text-align: center; padding: 20px;">✅ Нет ожидающих результатов</p>';
+          return;
+        }
+        
+        container.innerHTML = data.results.map(r => `
+          <div class="admin-result">
+            <div class="ar-match">Матч #${r.match_id}</div>
+            <div class="ar-captains">
+              🔶 T: <span class="t">${r.t_nickname}</span> (${r.t_game_id})<br>
+              🔷 CT: <span class="ct">${r.ct_nickname}</span> (${r.ct_game_id})
+            </div>
+            <div style="font-size: 12px; color: #8888aa;">
+              Победитель: ${r.winner === 'T' ? '🔶 T' : '🔷 CT'}
+              ${r.screenshot_path ? `<br><a href="${r.screenshot_path}" target="_blank" style="color: #ff6b35;">📸 Скриншот</a>` : ''}
+            </div>
+            <div class="ar-actions">
+              <button class="btn btn-success btn-small" onclick="confirmResult(${r.id}, '${r.winner}')">✅ Подтвердить</button>
+            </div>
+          </div>
+        `).join('');
+      } catch (e) {
+        container.innerHTML = '<p style="color: #ff4444; text-align: center; padding: 20px;">Ошибка загрузки</p>';
+      }
+    }
+
+    async function confirmResult(resultId, winner) {
+      try {
+        const res = await fetch(`/api/admin/confirm/${resultId}`, {
+          method: 'POST',
+          headers: { 'x-user-id': currentUser.id, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ winner })
+        });
+        const data = await res.json();
+        if (data.error) {
+          showToast(data.error, 'error');
+          return;
+        }
+        showToast('Результат подтвержден! ELO обновлено.', 'success');
+        loadPendingResults();
+      } catch (e) {
+        showToast('Ошибка', 'error');
+      }
+    }
+
+    // ========== TOAST ==========
+    function showToast(message, type = 'info') {
+      const toast = document.getElementById('toast');
+      toast.textContent = message;
+      toast.className = `toast show ${type}`;
+      setTimeout(() => {
+        toast.classList.remove('show');
+      }, 3000);
+    }
+
+    // ========== AUTO-CONNECT ON RELOAD ==========
+    (async function() {
+      const savedId = localStorage.getItem('standleo_user_id');
+      if (savedId) {
+        try {
+          const res = await fetch('/api/profile', {
+            headers: { 'x-user-id': savedId }
+          });
+          const data = await res.json();
+          if (data.user) {
+            currentUser = data.user;
+            connectWebSocket();
+            document.getElementById('loginPage').classList.remove('active');
+            document.getElementById('mainPage').classList.add('active');
+            document.getElementById('bottomNav').style.display = 'flex';
+            updateUI();
+          }
+        } catch (e) {
+          localStorage.removeItem('standleo_user_id');
+        }
+      }
+    })();
+  </script>
+</body>
+</html>
